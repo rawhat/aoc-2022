@@ -6,7 +6,6 @@ import util.{read_file}
 
 fn get_sorted_calorie_counts() -> List(Int) {
   assert Ok(input) = read_file("src/days/one.txt")
-  let values = string.split(input, on: "\n\n")
 
   let calories_to_list = fn(entry: String) -> List(Int) {
     entry
@@ -14,9 +13,10 @@ fn get_sorted_calorie_counts() -> List(Int) {
     |> list.filter_map(int.parse)
   }
 
-  values
+  input
+  |> string.split(on: "\n\n")
   |> list.map(calories_to_list)
-  |> list.map(list.fold(_, 0, fn(acc, value) { acc + value }))
+  |> list.map(int.sum)
   |> list.sort(int.compare)
   |> list.reverse
 }
@@ -30,9 +30,12 @@ pub fn part_one() {
 }
 
 pub fn part_two() {
-  assert [first, second, third, ..] = get_sorted_calorie_counts()
+  let sum =
+    get_sorted_calorie_counts()
+    |> list.take(3)
+    |> int.sum
 
-  io.debug(#("sum of top three calorie counts is", first + second + third))
+  io.debug(#("sum of top three calorie counts is", sum))
 
   Nil
 }
