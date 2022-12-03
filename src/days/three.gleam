@@ -9,19 +9,10 @@ type Rucksack {
   Rucksack(left: List(String), right: List(String))
 }
 
-external fn do_next_codepoint(item: String) -> List(Int) =
-  "string" "next_codepoint"
-
-fn next_codepoint(item: String) -> Int {
-  assert [codepoint, ..] = do_next_codepoint(item)
-  codepoint
-}
-
 fn score_value(item: String) -> Int {
-  let codepoint = next_codepoint(item)
-  case codepoint {
-    value if value >= 97 -> value - 96
-    value -> value - 38
+  case <<item:utf8>> {
+    <<value:int>> if value > 96 -> value - 96
+    <<value:int>> -> value - 38
   }
 }
 
