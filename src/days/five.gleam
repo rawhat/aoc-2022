@@ -34,13 +34,22 @@ fn get_action(line: String) -> Action {
   Action(count, from, to)
 }
 
-fn perform_action(state: State, action: Action) -> State {
-  assert Ok([to_move, ..rest]) = map.get(state, action.from)
-  assert Ok(dest) = map.get(state, action.to)
+fn perform_action(reverse: Bool) -> fn(State, Action) -> State {
+  fn(state: State, action: Action) {
+    assert Ok(source) = map.get(state, action.from)
+    assert Ok(dest) = map.get(state, action.to)
 
-  state
-  |> map.insert(action.to, [to_move, ..dest])
-  |> map.insert(action.from, rest)
+    assert #(to_move, rest) = list.split(source, at: action.count)
+
+    let to_move = case reverse {
+      True -> list.reverse(to_move)
+      _ -> to_move
+    }
+
+    state
+    |> map.insert(action.to, list.append(to_move, dest))
+    |> map.insert(action.from, rest)
+  }
 }
 
 fn get_actions() -> List(Action) {
@@ -49,18 +58,27 @@ fn get_actions() -> List(Action) {
   list.map(lines, get_action)
 }
 
-pub fn part_one() {
+fn get_top_letters(reverse: Bool) -> String {
   let actions = get_actions()
   let state = get_initial_state()
-  let final_state = list.fold(actions, state, perform_action)
+  let final_state = list.fold(actions, state, perform_action(reverse))
 
-  let top_letters =
-    final_state
-    |> map.values
-    |> list.filter_map(list.at(_, 0))
-    |> string.join(with: "")
+  final_state
+  |> map.values
+  |> list.filter_map(list.at(_, 0))
+  |> string.join(with: "")
+}
 
-  io.debug(#("the top letters are", top_letters))
+pub fn part_one() {
+  let top_letters = get_top_letters(True)
+  io.debug(#("the top letters with reversing are", top_letters))
+
+  Nil
+}
+
+pub fn part_two() {
+  let top_letters = get_top_letters(False)
+  io.debug(#("the top letters without reversing are", top_letters))
 
   Nil
 }
