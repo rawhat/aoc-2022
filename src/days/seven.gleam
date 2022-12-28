@@ -173,7 +173,7 @@ pub fn part_one() {
   |> build_filesystem(map.new(), _, [])
   |> get_directory_sizes
   |> map.values
-  |> list.filter(fn(size) { size <= 100000 })
+  |> list.filter(fn(size) { size <= 100_000 })
   |> int.sum
   |> fn(sum) { io.debug(#("total sum of directories is", sum)) }
 
@@ -197,7 +197,7 @@ pub fn part_two() {
     |> list.map(fn(file) { file.size })
     |> int.sum
 
-  let free_space_needed = 30000000 - { 70000000 - root_size }
+  let free_space_needed = 30_000_000 - { 70_000_000 - root_size }
 
   assert Ok(size_to_delete) =
     directory_sizes

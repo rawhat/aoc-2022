@@ -172,7 +172,7 @@ pub fn part_two() {
     )
     |> iterator.last
 
-  io.print(matrix.to_string(crt.grid))
+  io.print(matrix.to_string(crt.grid, fn(str) { option.unwrap(str, "?") }))
 
   Nil
 }

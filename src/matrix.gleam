@@ -5,7 +5,6 @@ import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam/pair
 import gleam/regex.{Regex}
-import gleam/result
 import gleam/string
 import gleam/string_builder
 import gleam_array.{Array}
@@ -101,7 +100,7 @@ pub fn fill_holes(matrix: Matrix(a), with mapper: fn(Point) -> a) -> Matrix(a) {
   |> from_iterator
 }
 
-pub fn to_string(matrix: Matrix(a)) -> String {
+pub fn to_string(matrix: Matrix(a), mapper: fn(Option(a)) -> String) -> String {
   let builder = string_builder.from_string("")
   let Matrix(array) = matrix
 
@@ -125,25 +124,7 @@ pub fn to_string(matrix: Matrix(a)) -> String {
       }
       let value_strings =
         row
-        |> gleam_array.map(fn(col_opt, _) {
-          col_opt
-          |> option.map(fn(col) {
-            let col_dyn = dynamic.from(col)
-            case dynamic.classify(col_dyn) {
-              "String" ->
-                col_dyn
-                |> dynamic.string
-                |> result.unwrap("-")
-              "Int" ->
-                col_dyn
-                |> dynamic.int
-                |> result.unwrap(-1)
-                |> int.to_string
-              _ -> "?"
-            }
-          })
-          |> option.unwrap("?")
-        })
+        |> gleam_array.map(fn(col_opt, _) { mapper(col_opt) })
         |> gleam_array.to_list
         |> string.join(" ")
       let row_builder =
