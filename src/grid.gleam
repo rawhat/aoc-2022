@@ -1,7 +1,8 @@
+import gleam/int
+import gleam/io
 import gleam/iterator.{Iterator}
 import gleam/map.{Map}
-import gleam/pair
-import gleam/result
+import gleam/set.{Set}
 import gleam/string_builder
 
 pub type Position {
@@ -9,26 +10,48 @@ pub type Position {
 }
 
 pub opaque type Grid(value) {
-  Grid(items: Map(Position, value), rows: Int, columns: Int)
+  Grid(
+    items: Map(Position, value),
+    row_start: Int,
+    row_end: Int,
+    column_start: Int,
+    column_end: Int,
+  )
 }
 
 pub fn new() -> Grid(value) {
-  Grid(items: map.new(), rows: 0, columns: 0)
+  Grid(
+    items: map.new(),
+    row_start: 0,
+    row_end: 0,
+    column_start: 0,
+    column_end: 0,
+  )
 }
 
 pub fn set(grid: Grid(value), at key: Position, to value: value) -> Grid(value) {
-  let new_rows = case key.y > grid.rows {
-    True -> key.y
-    False -> grid.rows
+  let #(row_start, row_end) = case
+    key.y < grid.row_start,
+    key.y > grid.row_end
+  {
+    True, _ -> #(key.y, grid.row_end)
+    _, True -> #(grid.row_start, key.y)
+    _, _ -> #(grid.row_start, grid.row_end)
   }
-  let new_columns = case key.x > grid.columns {
-    True -> key.x
-    False -> grid.columns
+  let #(column_start, column_end) = case
+    key.x < grid.column_start,
+    key.x > grid.column_end
+  {
+    True, _ -> #(key.x, grid.column_end)
+    _, True -> #(grid.column_start, key.x)
+    _, _ -> #(grid.column_start, grid.column_end)
   }
   Grid(
     items: map.insert(grid.items, key, value),
-    rows: new_rows,
-    columns: new_columns,
+    row_start: row_start,
+    row_end: row_end,
+    column_start: column_start,
+    column_end: column_end,
   )
 }
 
@@ -37,19 +60,19 @@ pub fn get(grid: Grid(value), at key: Position) -> Result(value, Nil) {
 }
 
 pub fn row_count(grid: Grid(value)) -> Int {
-  grid.rows
+  int.absolute_value(grid.row_end - grid.row_start)
 }
 
 pub fn column_count(grid: Grid(value)) -> Int {
-  grid.columns
+  int.absolute_value(grid.column_end - grid.column_start)
 }
 
 pub fn to_iterator(
   grid: Grid(value),
 ) -> Iterator(#(Position, Result(value, Nil))) {
-  iterator.range(0, grid.rows)
+  iterator.range(grid.row_start, grid.row_end)
   |> iterator.flat_map(fn(row) {
-    iterator.range(0, grid.columns)
+    iterator.range(grid.column_start, grid.column_end)
     |> iterator.map(fn(col) {
       let position = Position(col, row)
       #(position, map.get(grid.items, position))
@@ -79,7 +102,7 @@ pub fn get_row(
   grid: Grid(value),
   row: Int,
 ) -> List(#(Position, Result(value, Nil))) {
-  iterator.range(0, grid.columns)
+  iterator.range(grid.column_start, grid.column_end)
   |> iterator.map(fn(col) {
     let position = Position(col, row)
     #(position, map.get(grid.items, position))
@@ -91,7 +114,7 @@ pub fn get_column(
   grid: Grid(value),
   column: Int,
 ) -> List(#(Position, Result(value, Nil))) {
-  iterator.range(0, grid.rows)
+  iterator.range(grid.row_start, grid.row_end)
   |> iterator.map(fn(row) {
     let position = Position(column, row)
     #(position, map.get(grid.items, position))
@@ -109,11 +132,11 @@ pub fn to_string(
     string_builder.new(),
     fn(builder, entry) {
       let #(position, value) = entry
-      let start = case position.x == 0 {
+      let start = case position.x == grid.column_start {
         True -> "\n"
         False -> ""
       }
-      let end = case position.x == grid.columns {
+      let end = case position.x == grid.column_end {
         True -> ""
         False -> " "
       }
@@ -152,4 +175,45 @@ pub fn get_adjacents(
   |> iterator.filter(fn(pos) { pos != of })
   |> iterator.map(fn(pos) { #(pos, map.get(grid.items, pos)) })
   |> iterator.to_list
+}
+
+pub fn box_of_points(
+  top_left: Position,
+  bottom_right: Position,
+) -> Iterator(Position) {
+  iterator.range(top_left.y, bottom_right.y)
+  |> iterator.flat_map(fn(row) {
+    iterator.range(top_left.x, bottom_right.x)
+    |> iterator.map(fn(col) { Position(col, row) })
+  })
+}
+
+pub fn shift(from: Position, offset: Position) -> Position {
+  Position(from.x + offset.x, from.y + offset.y)
+}
+
+pub fn neighborhood(of: Position, radius: Int) -> Set(Position) {
+  let top_left =
+    iterator.range(radius, 0)
+    |> iterator.map(fn(offset) {
+      shift(of, Position(offset - radius, 0 - offset))
+    })
+  let top_right =
+    iterator.range(0, radius)
+    |> iterator.map(fn(offset) {
+      shift(of, Position(radius - offset, 0 - offset))
+    })
+  let bottom_left =
+    iterator.range(radius, 0)
+    |> iterator.map(fn(offset) { shift(of, Position(offset - radius, offset)) })
+  let bottom_right =
+    iterator.range(0, radius)
+    |> iterator.map(fn(offset) { shift(of, Position(radius - offset, offset)) })
+
+  top_left
+  |> iterator.append(top_right)
+  |> iterator.append(bottom_left)
+  |> iterator.append(bottom_right)
+  |> iterator.to_list
+  |> set.from_list
 }
